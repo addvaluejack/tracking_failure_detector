@@ -1,2 +1,5 @@
 # ignore all dataset
 *.txt
+
+# ignore swap file
+*.swp

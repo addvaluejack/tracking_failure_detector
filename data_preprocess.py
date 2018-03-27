@@ -5,7 +5,7 @@ from scipy import interpolate
 
 #raw_data_path = "/media/addvaluejack/F066EBC466EB8A24/dataset/"
 raw_data_path = "/home/addvaluejack/dataset/"
-project_path = "/home/Repo/tracking_failure_detector/"
+project_path = "/home/addvaluejack/Repo/tracking_failure_detector/"
 
 def resize_and_reshape_response(response_file_name):
   values = np.loadtxt(response_file_name, ndmin=2)
@@ -22,7 +22,6 @@ def resize_and_reshape_response(response_file_name):
   fig, axes = plt.subplots(nrows=1, ncols=2)
   axes[0].imshow(values)
   axes[1].imshow(new_values)
-  #fig.tight_layout()
   plt.show()  
 
   return np.ravel(new_values)
@@ -50,10 +49,10 @@ def data_preprocess():
           t_response = [resize_and_reshape_response(raw_data_path+directory_name+file_name)]
         else:
           t_response = np.append(t_response, [resize_and_reshape_response(raw_data_path+directory_name+file_name)], axis=0)
-          t_length = t_length+1
+        t_length = t_length+1
     # truncate the t_response if it is longer than t_overlap
     if t_length > np.shape(t_overlap)[0]:
-      t_response = t_response[0:np.shape(t_overlap)[0], :]
+      t_response = t_response[:np.shape(t_overlap)[0], :]
     # store all temporary values
     overlap = np.append(overlap, t_overlap)
     if np.shape(response)[0] == 0:
