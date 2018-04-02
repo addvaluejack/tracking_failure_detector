@@ -1,3 +1,4 @@
+import random
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
@@ -7,28 +8,29 @@ INPUT_SIZE = 400
 RNN_HIDDEN = 800
 OUTPUT_SIZE = 1
 LEARNING_RATE = 0.01
-ITERATIONS_PER_EPOCH = 20
 
 map_fn = tf.map_fn
 
 processed_data_path = "/home/addvaluejack/Repo/tracking_failure_detector/processed_dataset/"
 length = np.loadtxt(processed_data_path+"length.txt").astype(int)
-length_index = 0
-overlap = np.loadtxt(processed_data_path+"overlap.txt")
-overlap_index = 0
-response = np.loadtxt(processed_data_path+"response.txt")
-response_index = 0
+nested_overlap = np.loadtxt(processed_data_path+"overlap.txt")
+nested_response = np.loadtxt(processed_data_path+"response.txt")
+overlap = []
+response = []
+t_overlap_index = 0
+t_response_index = 0
+for i in range(np.shape(length)[0]):
+  t_overlap = nested_overlap[t_overlap_index:t_overlap_index+length[i]]
+  t_response = nested_response[t_response_index:t_response_index+length[i]]
+  overlap.append(t_overlap)
+  response.append(t_response)
+  t_overlap_index += length[i]
+  t_response_index += length[i]
 
-def generate_batch():
-  global length_index
-  global overlap_index
-  global response_index
-  t_length = length[length_index]
-  t_overlap = overlap[overlap_index:overlap_index+t_length]
-  t_response = response[response_index:response_index+t_length]
-  length_index = length_index+1
-  overlap_index = overlap_index+t_length
-  response_index = response_index+t_length
+def generate_sample(i):
+  t_length = length[i]
+  t_overlap = overlap[i]
+  t_response = response[i]
   x = np.empty((t_length, 1, INPUT_SIZE))
   y = np.empty((t_length, 1, OUTPUT_SIZE))
   for i in range(t_length):
@@ -43,8 +45,6 @@ outputs = tf.placeholder(tf.float32, (None, 1, OUTPUT_SIZE))
 
 cell = tf.nn.rnn_cell.BasicLSTMCell(RNN_HIDDEN, state_is_tuple=True)
 
-# initial_state = cell.zero_state(1, tf.float32)
-# initial_state = tf.nn.rnn_cell.LSTMStateTuple(c=tf.ones([1, RNN_HIDDEN]), h=tf.ones([1, RNN_HIDDEN]))
 initial_c_state = tf.placeholder(tf.float32, (1, RNN_HIDDEN))
 initial_h_state = tf.placeholder(tf.float32, (1, RNN_HIDDEN))
 initial_state = tf.nn.rnn_cell.LSTMStateTuple(c=initial_c_state, h=initial_h_state)
@@ -62,18 +62,22 @@ train_fn = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE).minimize(error)
 
 session = tf.Session()
 init_op = tf.global_variables_initializer()
+saver = tf.train.Saver()
 session.run(init_op)
 
-for epoch in range(100):
+for epoch in range(1):
+  print("Epoch %d"%(epoch))
   epoch_error = 0
-  for _ in range(ITERATIONS_PER_EPOCH):
-    x, y, c, h = generate_batch()
+  for i in range(len(overlap)):
+    x, y, c, h = generate_sample(i)
     epoch_error += session.run([error, train_fn], {
       inputs: x,
       outputs: y,
       initial_c_state: c,
       initial_h_state: h,
     })[0]
-  epoch_error /= ITERATIONS_PER_EPOCH
-  print("Epoch %d, train error: %.2f"%(epoch, epoch_error))
+  epoch_error /= len(overlap) 
+  print("  Train error: %.5f"%(epoch_error))
 
+save_path = saver.save(session, processed_data_path+"../model/model.ckpt")
+print("Model saved in path: %s"%save_path)
